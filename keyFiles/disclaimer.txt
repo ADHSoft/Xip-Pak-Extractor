@@ -1,1 +1,1 @@
-txtKey is just a crc32 table in the wrong order.
+txtKey is like a crc32 table 

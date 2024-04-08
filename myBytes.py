@@ -52,12 +52,9 @@ class Bytes:
         return int(self.value)
 
     
-def printableBytes(a: bytes , add0x: bool = True) -> str:
-    data:str = str(hex(int.from_bytes(a, byteorder='big')))
-    data = data.replace("0x", "")
-    if len(data) % 2 != 0:
-        data = "0" + data
-    if add0x:
-        return "0x" + data
+def printableBytes(input_: bytes , add0x: bool = False) -> str:
+    data:str = input_.hex()
+    if not add0x:
+        return data
     else:
-        return data 
+        return "0x" + data

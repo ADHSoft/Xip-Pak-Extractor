@@ -1,12 +1,13 @@
 from typing import List
+
+import numba
 import xipDecoder_strategy
 
-def checksumA(a, b, c) -> bool:
+def checksumA(a:int , b:int, c:int) -> bool:
     if c == 0:
         #if __debug__: print("Unimplemented border case") TODO?
         b ^= 1
-    var1 = a * b
-    var1 &= 0xFF
+    var1 = (a * b) & 0xFF
     return var1 == c
 
 def japDeXor(input_: bytes, offset: int , strategy: xipDecoder_strategy.XipDecoderStrategy ) -> bytes:
@@ -16,7 +17,7 @@ def japDeXor(input_: bytes, offset: int , strategy: xipDecoder_strategy.XipDecod
 
     output = bytes()
     for i in range( strategy.fileHeaderLength()):
-        offset %= len(xorKey)
+        offset &= 255 #len(xorKey)
         byteA = (xorKey[offset] ^ input_[i]).to_bytes(1, "big")
         output += bytearray(byteA)
         offset += 1
@@ -40,16 +41,14 @@ def deXorTxt(input_: bytes) -> bytes:
     if i > 0:
         output += input_[-i:]
 
-    return  output
+    return output
 
 def deXorVisualClip(input_: bytes) -> bytes:
-    from xipDecoder_strategy import Crc32Table
-    key : List[int] = [Crc32Table()[i] for i in range(Crc32Table.size)]
+    key : bytes = xipDecoder_strategy.VcKey().get()
     offset = 0xED
-    output = input_[0:8] # preserve the first 8 bytes.
-    for i in range(8, len(input_) ):
-        offset %= len(key)
-        byteA = ((key[(offset) % 0x100] ^ input_[i]) & 0xFF).to_bytes(1, "big")
-        output += bytearray(byteA)
+    output = bytearray(input_[:]) 
+    for i in range(8, len(input_) ):# preserve the first 8 bytes.
+        offset &= 255 #len(key)
+        output[i] = key[offset % 256] ^ input_[i]
         offset += 1
     return  output

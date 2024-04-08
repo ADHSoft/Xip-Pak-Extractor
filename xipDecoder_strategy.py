@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from functools import cache
-from typing import List
+from typing import List, Optional
 import japText
 
 
@@ -71,16 +71,41 @@ class Xip3Decoder(XipDecoderStrategy):
 class Crc32Table: # a.k.a. "vcKey", 256 32bit numbers
     # class variables:
     size : int = 256
+    table : Optional[List[int]] = None
+
+    def __init__(self) -> None:
+        if Crc32Table.table is None:
+            Crc32Table.table = [0 for _ in range(Crc32Table.size)]
+            for i in range(Crc32Table.size):
+                crc = i
+                for _ in range(8):
+                    crc = (crc >> 1) ^ (0xEDB88320 if crc & 1 else 0)
+                Crc32Table.table[i] = crc
 
     @staticmethod
-    @cache
-    def __index__(index: int) -> int:
-        crc: int = index
-        for _ in range(8):
-            if crc & 1:
-                crc = (crc >> 1) ^ 0xEDB88320
-            else:
-                crc >>= 1
-        return crc
+    def get(index:int) -> int:
+        if Crc32Table.table is None:
+            Crc32Table()
+        index &= 255
+        assert Crc32Table.table is not None
+        return Crc32Table.table[index]
+
+    def __index__(self, index: int) -> int:
+        return Crc32Table().get(index)
+    
     def __getitem__(self, index: int) -> int:
-        return self.__index__(index % Crc32Table.size)
+        return Crc32Table().get(index)
+    
+class VcKey:
+    key : Optional[bytes] = None
+
+    @staticmethod
+    def get() -> bytes:
+        if VcKey.key is None:
+            VcKey()
+        assert VcKey.key is not None    
+        return VcKey.key
+    
+    def __init__(self) -> None:
+        if VcKey.key is None:
+            VcKey.key = bytes(Crc32Table().get(i)&0xff for i in range(256))

@@ -1,0 +1,3 @@
+#64/32 bit depending on the system 64/32
+gcc-mydll:
+	gcc $(CPPFLAGS) $(GCC_CFLAGS) -shared -o myLzoDll.dll minilzo.c myLzoDll.c
