@@ -1,1 +1,0 @@
-txtKey is like a crc32 table 

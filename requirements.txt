@@ -1,3 +1,5 @@
+# py >= 3.8
+
 python-lzo
 attrs
 numba
