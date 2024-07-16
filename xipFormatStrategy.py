@@ -1,14 +1,14 @@
 from abc import abstractmethod
-from typing import List, Optional, Set, Tuple
-from rsaDecryptor import RsaDecryptor
+from typing import List, Optional, Set, Tuple, ClassVar, Final
+from rsaDecryptor import RsaDecryptor, Rsa3Decryptor
 
 
 class XipFormatStrategy:
 
     # class vars:
+    rsaDecryptor : ClassVar[Optional[RsaDecryptor]] = None
+    environment_ok: ClassVar[bool] = False
     MASKED_VISUALCLIP_FILE_TYPES = {".vci", ".vce",".vc"}
-    rsaDecryptor : Optional[RsaDecryptor] = None
-    environment_ok: bool = False
     FILE_HEADER_LENGTH = 0x11c
     FILE_NAME_LENGTH : int
     MASKED_CONFIG_FILE_TYPES : Set[str]
@@ -28,7 +28,7 @@ class Xip2Decoder(XipFormatStrategy):
     REQUIRED_KEYS = {"key1a.bin", "key1b.bin"}
     
 class Xip2ChDecoder(Xip2Decoder):    
-    _rsaDecryptor : Optional[RsaDecryptor] = None
+    _rsaDecryptor : ClassVar[Optional[RsaDecryptor]] = None
 
     REQUIRED_KEYS = {"key1a_ch.bin", "key1b_ch.bin"}
     
@@ -44,5 +44,9 @@ class Xip3Decoder(XipFormatStrategy):
     MASKED_CONFIG_FILE_TYPES = {".ini", ".crc", ".cvs", ".vgi", ".gsi", ".txt", ".cgi", ".gdi"}
     REQUIRED_KEYS = {"key1a.bin", "key1b.bin", "key1c.bin", "USB_16128_10.dat"}
 
-    def __init__(self) -> None:
-        raise NotImplementedError()
+    rsa3Decryptor : ClassVar[Optional[Rsa3Decryptor]] = None
+
+    def xipRsaDecrypt(self, *args, **kwargs) -> bytes:
+        if Xip3Decoder.rsa3Decryptor is None:
+            Xip3Decoder.rsa3Decryptor = Rsa3Decryptor()
+        return Xip3Decoder.rsa3Decryptor.xip3RsaDecrypt(*args, **kwargs)

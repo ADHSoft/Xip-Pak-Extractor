@@ -1,5 +1,5 @@
 from functools import cache
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple, Union
 import xipFormatStrategy
 import struct
 
@@ -55,7 +55,7 @@ class VcKey:
         if VcKey.key is None:
             VcKey.key = bytes(Crc32Table().get(i)&0xff for i in range(256))
 
-def deXorVisualClip(input_: bytes, vc:bool = False ) -> bytes:
+def unXorVisualClip(input_: bytes, vc:bool = False ) -> bytes:
     key : bytes = VcKey().get()
     output = bytearray(input_[:]) 
     offset: int = 0xED
@@ -69,7 +69,8 @@ def deXorVisualClip(input_: bytes, vc:bool = False ) -> bytes:
 
    
 @cache
-def japaneseTextXorEncoder() -> bytes:
+def japaneseTextXorEncoder(alt: bool = False) -> bytes:
+    start = 0 if alt else 1
     japText : str = """……耕一さん……あなたを殺します
 私はあなたを、愛してはいませんから…
 生きて…ラカン…
@@ -77,21 +78,24 @@ def japaneseTextXorEncoder() -> bytes:
 私…世界より貴方がほしい……
 夜空に星が輝くように溶けた心は離れない
 たとえこの手が離れてもふたりがそれを忘れぬ限り"""
-    return japText.replace("\n","\r\n").encode("shift-jis")[1:(1+256)]
+    return japText.replace("\n","\r\n").encode("shift-jis")[start:(start+256)] 
 
-
-def japDeXor(input_: bytes, offset: int , strategy: xipFormatStrategy.XipFormatStrategy ) -> bytes:
-    assert offset >= 0
+def japUnXor_(input_: bytes, keyOffset: int , size:int , alt: bool = False ) -> bytes:
+    keyOffset &= 255
     
-    xorKey = japaneseTextXorEncoder()
+    xorKey = japaneseTextXorEncoder( alt )
 
     output = bytes()
-    for i in range( strategy.FILE_HEADER_LENGTH ):
-        offset &= 255 #len(xorKey)
-        byteA = (xorKey[offset] ^ input_[i]).to_bytes(1, "big")
+    for i in range( size ):
+        byteA = (xorKey[keyOffset] ^ input_[i]).to_bytes(1, "big")
         output += bytearray(byteA)
-        offset += 1
+        keyOffset += 1
+        keyOffset &= 255 #len(xorKey)
     return  output
+
+
+def japUnXor(input_: bytes, keyOffset: int , strategy: xipFormatStrategy.XipFormatStrategy ) -> bytes:
+    return japUnXor_(input_, keyOffset, strategy.FILE_HEADER_LENGTH)
 
 @cache
 def txtKey() -> Tuple[int]:   

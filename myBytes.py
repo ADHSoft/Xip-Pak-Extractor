@@ -6,7 +6,7 @@ from attr import define
 
 '''
 Helper class to improve bytes handling
-This is not made very properly, it can have performance impacts.
+This was not made properly, it has low performance.
 '''
 @define( init=True )
 class Bytes:
@@ -39,7 +39,7 @@ class Bytes:
         return cls(value)
 
     def __int__(self):
-        return int.from_bytes(self.value)
+        return int.from_bytes(self.value , byteorder="big")
 
     @classmethod
     def fromStrLE(cls, input_: str, LEndian: bool = True):

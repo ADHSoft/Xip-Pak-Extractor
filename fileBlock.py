@@ -4,7 +4,7 @@ import lzo, bcolors, etcXorers
 
 
 from rsaDecryptor import RsaDecryptor
-from xipFormatStrategy import XipFormatStrategy
+from xipFormatStrategy import Xip3Decoder, XipFormatStrategy
 class FileBlock:
     """
     structure of a file block for xip2:
@@ -27,8 +27,7 @@ class FileBlock:
     x bytes : rest of the file (compressed) 
 
     """
-    #instance variables:
-
+    
     fileDescriptor: bytes # all bytes of the header    
     
     fileName: str
@@ -60,8 +59,18 @@ class FileBlock:
         self.baseOffset = baseOffset
         self.format_ = format_
 
+        if isinstance(format_, Xip3Decoder):
+            self.key = struct.unpack_from('<Q',  xipFile[baseOffset+8: baseOffset+8 + 8])[0] % 0x7d
+            raise NotImplementedError
+            key = usbkey[self.key]
+            for i in range(0x9c):
+                if i % 4 == 0:
+                    xipFile[baseOffset+i] ^= key
+            
 
-        self.fileDescriptor = etcXorers.japDeXor(xipFile[baseOffset: baseOffset + format_.FILE_HEADER_LENGTH], xorKeyOffset , format_)
+
+
+        self.fileDescriptor = etcXorers.japUnXor(xipFile[baseOffset: baseOffset + format_.FILE_HEADER_LENGTH], xorKeyOffset , format_)
 
         a = self.fileDescriptor[0x0c:(0x0c + format_.FILE_HEADER_LENGTH)]
         a = a[ : a.find(b'\x00')]
@@ -156,9 +165,9 @@ class FileBlock:
             extension: str = "." + self.fileName.split("\\")[-1].split(".")[-1]
             if extension in self.format_.MASKED_VISUALCLIP_FILE_TYPES:
                 if extension == ".vc":
-                    dataout = etcXorers.deXorVisualClip(dataout, True)
+                    dataout = etcXorers.unXorVisualClip(dataout, True)
                 else:
-                    dataout = etcXorers.deXorVisualClip(dataout)
+                    dataout = etcXorers.unXorVisualClip(dataout)
         
         return_ =  {"index": self.fileIndex, "crcOk": crcOk, "finalData": dataout }
 

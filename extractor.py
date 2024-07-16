@@ -1,5 +1,5 @@
 import pstats, logging, struct, sys, bcolors
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Final, List, Optional
 import etcXorers
 import xipFormatStrategy
 from xipFormatStrategy import XipFormatStrategy
@@ -20,7 +20,7 @@ def extract(*args, **kwargs):
 
 def extract_(pakPath:str , enable_extractFiles: bool = True , enable_listFiles:bool = False, outSubfolder:str = "", chineseVersion:bool = False, **kwargs):
 
-    pakFileName = pathlib.Path(pakPath).name
+    pakFileName : Final = pathlib.Path(pakPath).name
     if kwargs.get("noIndividualFoldersParam") is not True:
         outSubfolder = "./outFiles/" + pakFileName + "/"
     else:
@@ -57,10 +57,14 @@ def extract_(pakPath:str , enable_extractFiles: bool = True , enable_listFiles:b
     secretASkipSize = xipFile[9:10] + xipFile[7:8]
     secretASkipSize = struct.unpack_from('<H', secretASkipSize)[0]
 
-    secretA = xipFile[offsetSecretA:int(offsetSecretA)+24]
+    secretA = bytearray(xipFile[offsetSecretA:int(offsetSecretA)+24])
     if isinstance(xipDecoder, xipFormatStrategy.Xip3Decoder):
-        ... # TODO add 0x98989898 step
-        raise NotImplementedError
+        s04 = (struct.unpack_from('<I', secretA[0:4])[0])
+        secretA[0:4] = (0x98989898 ^ secretASkipSize ^ (struct.unpack_from('<I', secretA[0:4])[0])).to_bytes(4, "little")
+        #secretA[0:4] = 40 25 7f cb
+        secretA[0x10:0x14] = ( (struct.unpack_from('<I', secretA[0x10:0x14])[0]) ^ s04 ).to_bytes(4, "little")
+        #secretA == bytearray(b'@%\x7f\xcb\xd4\xd4\x1c\x00\x00\x00\x13\x00\x00\x00\x00\x00\x88\xcd\xd9\xe6\xb5i\x17\x00')
+        assert secretASkipSize == 0x18
     
     try:
         secretA = xipDecoder.xipRsaDecrypt(secretA,0x0c)
@@ -84,7 +88,7 @@ def extract_(pakPath:str , enable_extractFiles: bool = True , enable_listFiles:b
         files.append(fb)
         fileOffset += xipDecoder.FILE_HEADER_LENGTH + fb.fileBlockSize
         if not fb.noErrors :
-            logging.debug(f"{bcolors.ERR}Parsing failed for some file{bcolors.ENDC}")            
+            logging.debug(f"{bcolors.ERR}Parsing failed for a file{bcolors.ENDC}")            
             continue
         #logging.debug(pf.fileName)   
 
@@ -122,7 +126,7 @@ def extract_(pakPath:str , enable_extractFiles: bool = True , enable_listFiles:b
                     # check if file already exists
                     if os.path.exists(finalPath):
                         ...
-                        #print(f"\n{bcolors.WARN}File '{pf.fileName}' already exists.{bcolors.ENDC}")
+                        #print(f"\n{bcolors.WARN}File '{fb.fileName}' already exists.{bcolors.ENDC}")
                     with open( finalPath, "wb") as file:
                         file.write(result["finalData"])
 
@@ -140,3 +144,7 @@ def extract_(pakPath:str , enable_extractFiles: bool = True , enable_listFiles:b
     print(f"Done {pakFileName}.")
 
     return files
+
+
+if __name__ == "__main__":
+    extract( "./inputFiles/System_Script.pak" )
